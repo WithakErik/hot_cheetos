@@ -1,9 +1,137 @@
-import type { NextPage } from 'next'
-import Head from 'next/head'
-import Image from 'next/image'
-import styles from '../styles/Home.module.css'
+import * as React from "react";
+import type { NextPage } from "next";
+import Head from "next/head";
+import styles from "../styles/Home.module.css";
+
+import { deleteNote, getNotes, saveNote } from "./requests";
+type TNote = {
+  id: string;
+  body: string;
+  title: string;
+};
 
 const Home: NextPage = () => {
+  const [notes, setNotes] = React.useState<TNote[] | []>([
+    { id: "asdkfj232", title: "test", body: "ajdslfadsj" },
+  ]);
+  const [editingNoteId, setEditingNoteId] = React.useState("");
+  const [noteTitle, setNoteTitle] = React.useState("");
+  const [isAddingNewNote, setIsAddingNewNote] = React.useState(false);
+  const [noteBody, setNoteBody] = React.useState("");
+
+  React.useEffect(() => {
+    (async () => {
+      try {
+        const getNotesResponse = await getNotes();
+        if (getNotesResponse) {
+          setNotes(getNotesResponse);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    })();
+  }, []);
+
+  const handleSave = async () => {
+    console.log(noteBody, noteTitle);
+    try {
+      const postNoteResponse = await saveNote({
+        id: editingNoteId,
+        body: noteBody,
+        title: noteTitle,
+      });
+      if (postNoteResponse) {
+        setNotes(postNoteResponse);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+  const handleDelete = async (id: string) => {
+    try {
+      const deleteNoteResponse = await deleteNote(id);
+      if (deleteNoteResponse) {
+        setNotes(deleteNoteResponse);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+  const resetEditing = async () => {
+    setEditingNoteId("");
+    setNoteTitle("");
+    setNoteBody("");
+  };
+
+  const renderNote = (note: TNote) =>
+    editingNoteId === note.id ? (
+      <div
+        className={styles.card}
+        key={note.id}
+        style={{
+          background: "yellow",
+          border: "3px groove red",
+          width: "100%",
+        }}
+      >
+        <div>
+          <input
+            onChange={(e) => setNoteTitle(e.target.value)}
+            placeholder={note.title}
+            style={{ width: "100%" }}
+            type="text"
+          />
+          <input
+            onChange={(e) => setNoteBody(e.target.value)}
+            placeholder={note.body}
+            style={{ width: "100%" }}
+            type="text"
+          />
+        </div>
+        <div>
+          <button
+            onClick={handleSave}
+            style={{ background: "green", color: "white", width: "50%" }}
+          >
+            Save
+          </button>
+          <button
+            onClick={resetEditing}
+            style={{ background: "pink", color: "black", width: "50%" }}
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    ) : (
+      <div
+        className={styles.card}
+        key={note.id}
+        style={{
+          width: "100%",
+        }}
+      >
+        <div>
+          <h4>{note.title}</h4>
+          <p>{note.body}</p>
+        </div>
+        <div>
+          <button
+            onClick={() => handleDelete(note.id)}
+            style={{ background: "red", color: "white", width: "50%" }}
+          >
+            Delete
+          </button>
+          <button
+            onClick={() => setEditingNoteId(note.id)}
+            style={{ background: "blue", color: "white", width: "50%" }}
+          >
+            Edit
+          </button>
+        </div>
+      </div>
+    );
+
   return (
     <div className={styles.container}>
       <Head>
@@ -13,60 +141,48 @@ const Home: NextPage = () => {
       </Head>
 
       <main className={styles.main}>
-        <h1 className={styles.title}>
-          Welcome to <a href="https://nextjs.org">Next.js!</a>
-        </h1>
+        <h1 className={styles.title}>Welcome to Noteville!</h1>
 
-        <p className={styles.description}>
-          Get started by editing{' '}
-          <code className={styles.code}>pages/index.tsx</code>
-        </p>
+        <p className={styles.description}>Get started by adding a note!</p>
 
+        <button
+          onClick={() => {
+            resetEditing();
+            setIsAddingNewNote(true);
+          }}
+        >
+          New Note
+        </button>
+        {isAddingNewNote && (
+          <div>
+            <b>Title: </b>
+            <input onChange={(e) => setNoteTitle(e.target.value)} />
+            <b>Body: </b>
+            <input onChange={(e) => setNoteBody(e.target.value)} />
+            <button
+              style={{ width: "100%", background: "green", color: "white" }}
+            >
+              Save
+            </button>
+          </div>
+        )}
         <div className={styles.grid}>
-          <a href="https://nextjs.org/docs" className={styles.card}>
-            <h2>Documentation &rarr;</h2>
-            <p>Find in-depth information about Next.js features and API.</p>
-          </a>
-
-          <a href="https://nextjs.org/learn" className={styles.card}>
-            <h2>Learn &rarr;</h2>
-            <p>Learn about Next.js in an interactive course with quizzes!</p>
-          </a>
-
-          <a
-            href="https://github.com/vercel/next.js/tree/canary/examples"
-            className={styles.card}
-          >
-            <h2>Examples &rarr;</h2>
-            <p>Discover and deploy boilerplate example Next.js projects.</p>
-          </a>
-
-          <a
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className={styles.card}
-          >
-            <h2>Deploy &rarr;</h2>
-            <p>
-              Instantly deploy your Next.js site to a public URL with Vercel.
-            </p>
-          </a>
+          {notes && notes.map((note) => renderNote(note))}
         </div>
       </main>
 
       <footer className={styles.footer}>
+        Powered by{" "}
         <a
-          href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
+          href="https://www.bobblebeans.com"
           target="_blank"
           rel="noopener noreferrer"
         >
-          Powered by{' '}
-          <span className={styles.logo}>
-            <Image src="/vercel.svg" alt="Vercel Logo" width={72} height={16} />
-          </span>
+          Bobblebeans
         </a>
       </footer>
     </div>
-  )
-}
+  );
+};
 
-export default Home
+export default Home;
